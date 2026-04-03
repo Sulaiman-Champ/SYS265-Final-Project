@@ -1,24 +1,38 @@
 #!/bin/bash
 # push_pubkey.sh
-# Run from the CONTROLLER (172.16.1.X) after setup_deployer.sh has been run on the target.
+# Run from the CONTROLLER (172.16.1.X) after setup_deployer.sh has been run on the targets.
+# Usage:
+#   ./push_pubkey.sh hosts.txt          # file of newline-separated IPs
+#   ./push_pubkey.sh 172.16.1.50        # single IP (original behaviour)
 
 set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
 CONTROLLER_PUBKEY="${HOME}/.ssh/id_ed25519.pub"   # change if your key differs
-TARGET_HOST=""                                     # e.g. 172.16.1.50
 TARGET_USER="deployer"
-REMOTE_AUTH_KEYS="/home/${TARGET_USER}/.ssh/authorized_keys"
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Allow TARGET_HOST to be passed as the first argument
-if [[ -n "${1:-}" ]]; then
-    TARGET_HOST="$1"
+if [[ -z "${1:-}" ]]; then
+    echo "Usage: $0 <hosts-file.txt | ip-address>"
+    exit 1
 fi
 
-if [[ -z "${TARGET_HOST}" ]]; then
-    echo "Usage: $0 <target-server-ip>"
-    echo "  e.g. $0 172.16.1.50"
+# Build the list of targets: file → read lines; plain string → treat as single host
+TARGETS=()
+if [[ -f "$1" ]]; then
+    echo "[*] Reading hosts from file: $1"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Strip whitespace and skip blank lines / comments
+        line="${line//[[:space:]]/}"
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        TARGETS+=("$line")
+    done < "$1"
+else
+    TARGETS=("$1")
+fi
+
+if [[ ${#TARGETS[@]} -eq 0 ]]; then
+    echo "[!] No valid hosts found. Exiting."
     exit 1
 fi
 
@@ -28,16 +42,41 @@ if [[ ! -f "${CONTROLLER_PUBKEY}" ]]; then
     exit 1
 fi
 
-echo "[*] Copying public key to ${TARGET_USER}@${TARGET_HOST}"
-# ssh-copy-id handles deduplication and correct permissions automatically.
-# It will prompt once for the root/deployer password if key auth isn't yet set up.
-ssh-copy-id -i "${CONTROLLER_PUBKEY}" "${TARGET_USER}@${TARGET_HOST}"
+# ── Per-host tracking ────────────────────────────────────────────────────────
+SUCCEEDED=()
+FAILED=()
 
 echo ""
-echo "[*] Verifying connection..."
-ssh -o BatchMode=yes "${TARGET_USER}@${TARGET_HOST}" "echo '[+] Passwordless SSH is working as: \$(whoami)@\$(hostname)'"
+echo "[*] Pushing public key to ${#TARGETS[@]} host(s)..."
+echo "============================================================"
+
+for HOST in "${TARGETS[@]}"; do
+    echo ""
+    echo "[*] → ${TARGET_USER}@${HOST}"
+
+    if ssh-copy-id -i "${CONTROLLER_PUBKEY}" "${TARGET_USER}@${HOST}"; then
+        # Verify the key actually works
+        if ssh -o BatchMode=yes -o ConnectTimeout=10 "${TARGET_USER}@${HOST}" \
+               "echo '[+] OK: \$(whoami)@\$(hostname)'"; then
+            SUCCEEDED+=("${HOST}")
+        else
+            echo "    [!] Key copied but verification failed for ${HOST}"
+            FAILED+=("${HOST}")
+        fi
+    else
+        echo "    [!] ssh-copy-id failed for ${HOST}"
+        FAILED+=("${HOST}")
+    fi
+done
+
+# ── Summary ──────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================================"
-echo " Done. ${TARGET_USER}@${TARGET_HOST} is ready for"
-echo " passwordless, key-based SSH access."
+echo " Summary"
 echo "============================================================"
+echo " Succeeded (${#SUCCEEDED[@]}): ${SUCCEEDED[*]:-none}"
+echo " Failed    (${#FAILED[@]}):    ${FAILED[*]:-none}"
+echo "============================================================"
+
+# Exit non-zero if any host failed
+[[ ${#FAILED[@]} -eq 0 ]]
