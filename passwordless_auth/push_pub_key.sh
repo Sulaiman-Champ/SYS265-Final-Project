@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
-CONTROLLER_PUBKEY="${HOME}/.ssh/id_ed25519.pub"   # change if your key differs
+CONTROLLER_PUBKEY="deployer/.ssh/id_ed25519.pub"   # change if your key differs
 TARGET_USER="deployer"
 # ─────────────────────────────────────────────────────────────────────────────
 
