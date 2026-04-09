@@ -1,4 +1,9 @@
 ---
+# ==============================================================================
+# Ansible Playbook: Install & Configure Prometheus via prometheus.prometheus
+# Target: Ubuntu Core server at 172.16.1.15
+# ==============================================================================
+
 # ------------------------------------------------------------------------------
 # PLAY 1: Install the prometheus.prometheus collection on the Ansible controller.
 # This must run before any collection roles are referenced in subsequent plays.
@@ -82,7 +87,6 @@
       ansible.builtin.debug:
         msg: "Prometheus and Node Exporter are up and responding."
 
-    # Separate task — was incorrectly merged into the debug task previously
     - name: Add linux group hosts to Prometheus scrape config
       ansible.builtin.blockinfile:
         path: /etc/prometheus/prometheus.yml
@@ -92,12 +96,13 @@
           - job_name: "linux_nodes"
             static_configs:
               - targets:
+                  # Uses inventory_hostname directly since linux group hosts
+                  # are bare IPs with no ansible_host alias defined
                   {% for host in groups['linux'] %}
-                  - "{{ hostvars[host]['ansible_host'] }}:9100"
+                  - "{{ host }}:9100"
                   {% endfor %}
       notify: Reload Prometheus
 
-  # Handlers must be at play level, not nested inside post_tasks
   handlers:
     - name: Reload Prometheus
       ansible.builtin.uri:
@@ -106,10 +111,23 @@
         status_code: 200
 
 # ==============================================================================
-# Inventory note (do not commit secrets — use Ansible Vault for passwords):
+# Inventory (as provided):
+#
+#   [linux]
+#   172.16.1.5
+#   172.16.1.11
+#   172.16.1.15
+#   172.16.1.10
 #
 #   [prometheus_targets]
-#   prometheus-host ansible_host=172.16.1.5 ansible_user=ubuntu
+#   prometheus-host ansible_host=172.16.1.15
+#
+#   [windows]
+#   172.16.1.12
+#   172.16.1.13
+#
+#   [windows:vars]
+#   ansible_shell_type=powershell
 #
 # Run with:
 #   ansible-playbook -i inventory.ini playbook.yml
