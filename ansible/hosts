@@ -1,7 +1,11 @@
-[linux boxes]
+[linux_boxes]
 172.16.1.5
 172.16.1.11
 172.16.1.15
 172.16.1.10
 
-[windows boxes]
+[windows_boxes]
+172.16.1.12
+172.16.1.13
+[windows:vars]
+ansible_shell_type=powershell
