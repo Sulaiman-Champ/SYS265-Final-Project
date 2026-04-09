@@ -1,0 +1,27 @@
+---
+# Install the collection on the control node before using it
+- name: Install prometheus.prometheus collection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Install collection from Ansible Galaxy
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection install prometheus.prometheus
+      changed_when: false
+
+# Apply Prometheus to the remote host using a fully-qualified role name,
+# which bypasses collection resolution issues entirely
+- name: Deploy Prometheus on remote host
+  hosts: prometheus_targets
+  become: true
+  gather_facts: true
+
+  roles:
+    # FQCN avoids the role lookup bug — do not shorten this
+    - role: prometheus.prometheus.prometheus
+
+# Inventory:
+#   [prometheus_targets]
+#   prometheus-host ansible_host=172.16.1.15 ansible_user=ubuntu
