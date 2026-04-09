@@ -5,24 +5,7 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# PLAY 1: Install the prometheus.prometheus collection on the Ansible controller.
-# This must run before any collection roles are referenced in subsequent plays.
-# ------------------------------------------------------------------------------
-- name: Install prometheus.prometheus collection on localhost
-  hosts: localhost
-  connection: local
-  gather_facts: false
-
-  tasks:
-    - name: Install prometheus.prometheus from Ansible Galaxy
-      # ansible-galaxy is idempotent with --force omitted; skips if already installed
-      ansible.builtin.command:
-        cmd: ansible-galaxy collection install prometheus.prometheus
-      register: galaxy_install
-      changed_when: "'was installed' in galaxy_install.stdout"
-
-# ------------------------------------------------------------------------------
-# PLAY 2: Configure the remote Ubuntu Core host with Prometheus.
+# PLAY 1: Configure the remote Ubuntu Core host with Prometheus.
 # ------------------------------------------------------------------------------
 - name: Deploy Prometheus stack on remote host
   hosts: prometheus_targets
