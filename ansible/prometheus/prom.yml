@@ -70,20 +70,16 @@
       ansible.builtin.debug:
         msg: "Prometheus and Node Exporter are up and responding."
 
-    - name: Add linux group hosts to Prometheus scrape config
+    - name: Add linux group hosts to existing node scrape config
       ansible.builtin.blockinfile:
         path: /etc/prometheus/prometheus.yml
-        insertafter: EOF
+        # Inserts additional targets under the existing "node" job
+        insertafter: "- localhost:9100"
         marker: "# {mark} ANSIBLE MANAGED BLOCK - linux node targets"
         block: |
-          - job_name: "linux_nodes"
-            static_configs:
-              - targets:
-                  # Uses inventory_hostname directly since linux group hosts
-                  # are bare IPs with no ansible_host alias defined
-                  {% for host in groups['linux'] %}
+          {% for host in groups['linux'] %}
                   - "{{ host }}:9100"
-                  {% endfor %}
+          {% endfor %}
 
 
 # ==============================================================================
