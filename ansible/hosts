@@ -5,9 +5,9 @@
 172.16.1.10
 
 [prometheus_targets]
-prometheus-host ansible_host=172.16.1.5
+prometheus-host ansible_host=172.16.1.15
 
-[windows_boxes]
+[windows]
 172.16.1.12
 172.16.1.13
 [windows:vars]
