@@ -1,9 +1,4 @@
 ---
-# ==============================================================================
-# Ansible Playbook: Install & Configure Prometheus via prometheus.prometheus
-# Target: Ubuntu Core server at 172.16.1.5
-# ==============================================================================
-
 # ------------------------------------------------------------------------------
 # PLAY 1: Install the prometheus.prometheus collection on the Ansible controller.
 # This must run before any collection roles are referenced in subsequent plays.
@@ -23,36 +18,23 @@
 
 # ------------------------------------------------------------------------------
 # PLAY 2: Configure the remote Ubuntu Core host with Prometheus.
-# Applies the node_exporter and prometheus roles from the installed collection.
 # ------------------------------------------------------------------------------
 - name: Deploy Prometheus stack on remote host
   hosts: prometheus_targets
-  become: true          # Most tasks require root privileges
-  gather_facts: true    # Needed by collection roles for OS detection
+  become: true
+  gather_facts: true
 
-  # Declare the collection so short role names resolve without FQCN
   collections:
     - prometheus.prometheus
 
-  # --------------------------------------------------------------------------
-  # Role-level variables — override collection defaults here.
-  # Full variable references:
-  #   https://github.com/prometheus-community/ansible/tree/main/roles/prometheus
-  #   https://github.com/prometheus-community/ansible/tree/main/roles/node_exporter
-  # --------------------------------------------------------------------------
   vars:
-    # -- node_exporter settings -----------------------------------------------
     node_exporter_version: latest
     node_exporter_web_listen_address: "0.0.0.0:9100"
 
-    # -- prometheus settings --------------------------------------------------
     prometheus_version: latest
     prometheus_web_listen_address: "0.0.0.0:9090"
-
-    # Retention period for local TSDB storage
     prometheus_storage_retention: "15d"
 
-    # Scrape configs: Prometheus scrapes itself and the local node_exporter
     prometheus_scrape_configs:
       - job_name: "prometheus"
         static_configs:
@@ -62,17 +44,9 @@
       - job_name: "node"
         static_configs:
           - targets:
-              - "localhost:9100"   # node_exporter on this host
+              - "localhost:9100"
 
-  # --------------------------------------------------------------------------
-  # Pre-tasks: Validate the environment before running collection roles.
-  # --------------------------------------------------------------------------
   pre_tasks:
-#    - name: Ensure system packages are up to date
-#      ansible.builtin.apt:
-#        update_cache: true
-#        cache_valid_time: 3600   # Avoid redundant apt-get update within 1 hour
-
     - name: Ensure required dependency packages are present
       ansible.builtin.apt:
         name:
@@ -81,21 +55,10 @@
           - apt-transport-https
         state: present
 
-  # --------------------------------------------------------------------------
-  # Roles: Applied in order — node_exporter exposes host metrics,
-  # prometheus scrapes and stores them.
-  # --------------------------------------------------------------------------
   roles:
-    # Installs and configures Prometheus Node Exporter as a systemd service
     - role: prometheus.prometheus.node_exporter
-
-    # Installs and configures the Prometheus server as a systemd service,
-    # writing prometheus.yml from the vars defined above
     - role: prometheus.prometheus.prometheus
 
-  # --------------------------------------------------------------------------
-  # Post-tasks: Smoke-test that both services are reachable after deployment.
-  # --------------------------------------------------------------------------
   post_tasks:
     - name: Wait for Prometheus to be reachable
       ansible.builtin.uri:
@@ -118,30 +81,30 @@
     - name: Confirm both services are healthy
       ansible.builtin.debug:
         msg: "Prometheus and Node Exporter are up and responding."
-        - name: Add linux group hosts to Prometheus scrape config
+
+    # Separate task — was incorrectly merged into the debug task previously
+    - name: Add linux group hosts to Prometheus scrape config
       ansible.builtin.blockinfile:
         path: /etc/prometheus/prometheus.yml
-        # Inserts after the last existing scrape_config entry
         insertafter: EOF
         marker: "# {mark} ANSIBLE MANAGED BLOCK - linux node targets"
         block: |
           - job_name: "linux_nodes"
             static_configs:
               - targets:
-                  # Dynamically builds target list from the linux inventory group
                   {% for host in groups['linux'] %}
                   - "{{ hostvars[host]['ansible_host'] }}:9100"
                   {% endfor %}
-      # Notify prometheus to reload its config cleanly without full restart
       notify: Reload Prometheus
 
-  # Handlers are triggered by notify — only fires if the task above changed
+  # Handlers must be at play level, not nested inside post_tasks
   handlers:
     - name: Reload Prometheus
       ansible.builtin.uri:
         url: "http://localhost:9090/-/reload"
         method: POST
         status_code: 200
+
 # ==============================================================================
 # Inventory note (do not commit secrets — use Ansible Vault for passwords):
 #
