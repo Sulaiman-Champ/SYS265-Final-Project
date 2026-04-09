@@ -101,14 +101,7 @@
                   {% for host in groups['linux'] %}
                   - "{{ host }}:9100"
                   {% endfor %}
-      notify: Reload Prometheus
 
-  handlers:
-    - name: Reload Prometheus
-      ansible.builtin.uri:
-        url: "http://localhost:9090/-/reload"
-        method: POST
-        status_code: 200
 
 # ==============================================================================
 # Inventory (as provided):
