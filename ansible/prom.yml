@@ -118,7 +118,30 @@
     - name: Confirm both services are healthy
       ansible.builtin.debug:
         msg: "Prometheus and Node Exporter are up and responding."
+        - name: Add linux group hosts to Prometheus scrape config
+      ansible.builtin.blockinfile:
+        path: /etc/prometheus/prometheus.yml
+        # Inserts after the last existing scrape_config entry
+        insertafter: EOF
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - linux node targets"
+        block: |
+          - job_name: "linux_nodes"
+            static_configs:
+              - targets:
+                  # Dynamically builds target list from the linux inventory group
+                  {% for host in groups['linux'] %}
+                  - "{{ hostvars[host]['ansible_host'] }}:9100"
+                  {% endfor %}
+      # Notify prometheus to reload its config cleanly without full restart
+      notify: Reload Prometheus
 
+  # Handlers are triggered by notify — only fires if the task above changed
+  handlers:
+    - name: Reload Prometheus
+      ansible.builtin.uri:
+        url: "http://localhost:9090/-/reload"
+        method: POST
+        status_code: 200
 # ==============================================================================
 # Inventory note (do not commit secrets — use Ansible Vault for passwords):
 #
