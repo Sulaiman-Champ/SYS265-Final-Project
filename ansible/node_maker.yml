@@ -1,0 +1,18 @@
+---
+# Deploy node_exporter on every host in the linux group
+- name: Deploy Node Exporter on all Linux hosts
+  hosts: linux
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Apply node_exporter role via FQCN
+      ansible.builtin.include_role:
+        # Using include_role avoids the static role lookup bug
+        name: prometheus.prometheus.node_exporter
+
+    - name: Ensure node_exporter service is running and enabled
+      ansible.builtin.service:
+        name: node_exporter
+        state: started
+        enabled: true
