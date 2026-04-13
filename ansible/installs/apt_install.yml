@@ -1,0 +1,26 @@
+---
+# Playbook: Install aribas on Ubuntu hosts in the [AptInstall] group
+- name: Install aribas on Ubuntu hosts
+  hosts: AptInstall
+  become: true  # Run tasks with sudo privileges
+
+  tasks:
+    # Update apt cache and install the aribas package
+    - name: Install aribas via apt
+      ansible.builtin.apt:
+        name: aribas
+        state: present
+        update_cache: true
+
+    # Verify installation by checking the aribas binary is accessible
+    - name: Verify aribas is installed
+      ansible.builtin.command: which aribas
+      register: aribas_check
+      changed_when: false  # This task never changes system state
+
+    # Fail with a clear message if the binary was not found
+    - name: Assert aribas binary exists
+      ansible.builtin.assert:
+        that: aribas_check.rc == 0
+        fail_msg: "aribas was not found in PATH after installation"
+        success_msg: "aribas is installed at {{ aribas_check.stdout }}"
