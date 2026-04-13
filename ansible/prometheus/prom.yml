@@ -78,7 +78,7 @@
         marker: "# {mark} ANSIBLE MANAGED BLOCK - linux node targets"
         block: |
           {% for host in groups['linux'] %}
-                  - "{{ host }}:9100"
+                - {{ host }}:9100
           {% endfor %}
 
 
