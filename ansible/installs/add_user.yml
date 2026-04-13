@@ -1,0 +1,33 @@
+---
+# Playbook: Create a standard Linux user account on hosts in the [useradd] group
+- name: Create Linux user account
+  hosts: useradd
+  become: true  # Run tasks with sudo privileges
+
+  vars:
+    # Password is hashed at playbook runtime using SHA-512 to avoid plain-text storage
+    user_password: "{{ 'CHANGEME' | password_hash('sha512') }}"
+    user_name: "joesepher"
+
+  tasks:
+    # Create the user with a home directory, bash shell, and hashed password
+    - name: Create user joesepher
+      ansible.builtin.user:
+        name: "{{ user_name }}"
+        password: "{{ user_password }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    # Confirm the user exists in /etc/passwd
+    - name: Verify user was created
+      ansible.builtin.command: id "{{ user_name }}"
+      register: user_check
+      changed_when: false  # Read-only check, no system state is modified
+
+    # Fail early with a clear message if the user is not found
+    - name: Assert user exists
+      ansible.builtin.assert:
+        that: user_check.rc == 0
+        fail_msg: "User joesepher was not found after creation"
+        success_msg: "User joesepher created successfully: {{ user_check.stdout }}"
