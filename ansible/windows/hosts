@@ -10,9 +10,9 @@
 [useradd]
 172.16.1.15
 
-[winuseradd]
-172.16.1.122
-[winuseradd:vars]
+[DomainControllers]
+172.16.1.12
+[DomainControllers:vars]
 ansible_shell_type=powershell
 
 [windows]
