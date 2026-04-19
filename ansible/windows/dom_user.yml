@@ -16,3 +16,5 @@
             -AccountPassword (ConvertTo-SecureString "{{ new_password }}" -AsPlainText -Force) ` 
             -UserPrincipalName "{{ new_username }}@degenerates.local" ` 
             -Enabled $true 
+# Run with the following:
+# anisble-playbook -i hosts dom_user.yml -u USER@degenerates --ask-pass 
