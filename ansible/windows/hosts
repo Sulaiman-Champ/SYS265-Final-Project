@@ -10,10 +10,15 @@
 [useradd]
 172.16.1.15
 
+[winuseradd]
+172.16.1.122
+[winuseradd:vars]
+ansible_shell_type=powershell
+
 [windows]
 172.16.1.12
 172.16.1.13
-172.16.1.124
-172.16.1.125
+172.16.1.122
+172.16.1.123
 [windows:vars]
 ansible_shell_type=powershell
