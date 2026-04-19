@@ -1,2 +1,18 @@
-Create a ansible playbook in YML that will add a 
-[dom_user]
+---
+# Playbook to add a new user account to the degenerates.local Active Directory domain
+- name: Add domain user
+  hosts: DomainControllers  # Target hosts in the DomainControllers inventory group
+  vars:
+    new_username: "newuser"       # Change to make the user
+    new_password: "P@ssw0rd123!" # Change to make the password
+  remote_user: dadeployer         # Administrative account used to authenticate on the remote host
+
+  tasks:
+    # Uses the win_powershell module to run a PowerShell script on the remote Windows host
+    - name: Create domain user
+      ansible.windows.win_powershell:
+        script: |
+          New-ADUser -Name "{{ new_username }}" `
+            -AccountPassword (ConvertTo-SecureString "{{ new_password }}" -AsPlainText -Force) ` 
+            -UserPrincipalName "{{ new_username }}@degenerates.local" ` 
+            -Enabled $true 
