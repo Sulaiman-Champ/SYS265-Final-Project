@@ -4,11 +4,12 @@
   hosts: DomainControllers  # Target hosts in the DomainControllers inventory group
   vars:
     new_username: "CHANGE"          # Username (SAMAccountName) for the new domain account
-    new_password: "CHANGE"    # Password for the new domain account
-    first_name: "CHANGE"              # User's first name
-    last_name: "CHANGE"                # User's last name
-    display_name: "CHANGE"        # Display name shown in Active Directory
-    description: "CHANGE" # Account description in AD
+    new_password: "CHANGE"          # Password for the new domain account
+    first_name: "CHANGE"            # User's first name
+    last_name: "CHANGE"             # User's last name
+    display_name: "CHANGE"          # Display name shown in Active Directory
+    description: "CHANGE"           # Account description in AD
+    domain_controller: "CHANGE"     # Target domain controller e.g. dc1.degenerates.local
   remote_user: dadeployer            # Administrative account used to authenticate on the remote host
 
   tasks:
@@ -16,17 +17,20 @@
     - name: Create domain user
       ansible.windows.win_powershell:
         script: |
-          New-ADUser -Name "{{ display_name }}" `
-            -GivenName "{{ first_name }}" `            
-            -Surname "{{ last_name }}" `              
-            -DisplayName "{{ display_name }}" `      
-            -SamAccountName "{{ new_username }}" `      
-            -Description "{{ description }}" `       
-            -AccountPassword (ConvertTo-SecureString "{{ new_password }}" -AsPlainText -Force) `  
-            -UserPrincipalName "{{ new_username }}@degenerates.local" ` 
-            -PasswordNeverExpires $true `          
-            -ChangePasswordAtLogon $false `            
-            -Enabled $true                                 
+          New-ADUser `
+            -Server "{{ domain_controller }}" `
+            -SamAccountName "{{ new_username }}" `
+            -UserPrincipalName "{{ new_username }}@degenerates.local" `
+            -Name "{{ display_name }}" `
+            -GivenName "{{ first_name }}" `
+            -Surname "{{ last_name }}" `
+            -DisplayName "{{ display_name }}" `
+            -Description "{{ description }}" `
+            -AccountPassword (ConvertTo-SecureString "{{ new_password }}" -AsPlainText -Force) `
+            -PasswordNeverExpires $true `
+            -ChangePasswordAtLogon $false `
+            -Enabled $true
 # Run with the following:
-# anisble-playbook -i hosts dom_user.yml -u USER@degenerates --ask-pass 
+# ansible-playbook -i hosts dom_user.yml -u USER@degenerates --ask-pass
+
 
